@@ -76,10 +76,19 @@ void configureOTA() {
   ArduinoOTA.begin();
 }
 
-void configureUrlRoutes() {
-  server.serveStatic("/", SPIFFS, "").setDefaultFile("index.html");
+String valueProcessor(const String& var)
+{
+  Serial.print("Var: "); Serial.println(var);
+  
+  if(var == "DEVICE_NAME")
+    return deviceName;
+  return String();
+}
 
-  server.on("/api/resetwifi", HTTP_GET, [](AsyncWebServerRequest *request) {
+void configureUrlRoutes() {
+  server.serveStatic("/", SPIFFS, "").setTemplateProcessor(valueProcessor).setDefaultFile("index.html");
+
+  server.on("/api/resetsettings", HTTP_GET, [](AsyncWebServerRequest *request) {
     Serial.print("Resetting settings..."); Serial.println("");
     wifiManager.resetSettings();
 

@@ -3,79 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
   <style>
-    body{
-      width: 90%;
-      margin: 0 auto;
-      font-size: 14px;
-    }
-
-    button,
-    input,
-    select,
-    textarea {
-      font-family: inherit;
-      font-size: 100%;
-      width: 150px;
-      padding: 0;
-      margin: 0;
-      box-sizing: border-box;
-    }
-
-    .container {
-      width:50%;
-    }
-
-    .access-point {
-      background-color: transparent;
-      border: none;
-      text-align: left;
-      padding: 0 0 0.5em 0;
-      width: auto;
-      text-decoration: underline;
-      cursor: pointer;
-      color: blue;
-    }
-
-    #load {
-      display: none;
-      margin-right: 1em;
-    }
-
-    #scanButton {
-      top: -5px;
-      position: relative;
-      padding: 0;
-    }
-
     li {
       list-style-type:none;
-    }
-
-    #scanitem {
-      padding-top: 1em;
-    }
-
-    #scanitem.scanning {
-      padding-top: 0.5em;
-    }
-
-    label {
-      width:100px;
-      display: inline-block;
     }
   </style>
 </head>
 <body class="container">
   <div class="">
     <h1>Device setup</h1>
-
-    <ul>
-      <li><label for="devicename">Device Name:</label><input type="text" id="devicename" name="devicename" placeholder="Device name" value="" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" /></li>
-      <li><button id="btnSave" disabled="disabled" class="success">Save</button></li>
-      <li id="scanitem"><span id="load"><img src="spinner.gif" /></span><button id="scanButton">Scan for networks</button></li>
-    </ul>
+    <div>
+      <div class="mb-3">
+        <label for="devicename" class="form-label">Device Name:</label>
+        <input type="text" id="devicename" name="devicename" placeholder="Device name" value="%DEVICE_NAME%" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+        <div id="deviceNameHelp" class="form-text">The name of this plug</div>
+      </div>
+      <div><button id="btnSave" type="submit" disabled="disabled" class="btn btn-primary">Save settings</button></div>
+      <br/>
+      <div><button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#confirmResetSettingsModal">Reset wifi settings</button></div>
+    </div>
   </div>
+
+  <!-- Confirm reset settings Modal -->
+  <div class="modal fade" id="confirmResetSettingsModal" tabindex="-1" aria-labelledby="resetSettingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="resetSettingsModalLabel">Reset settings?</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          Are you sure you want to reset the device settings? You will need to reconfigure the device again.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+          <button type="button" id="btnReset" class="btn btn-primary" data-bs-dismiss="modal">Yes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     function checkValid() {
       const devicename = document.getElementById("devicename");
@@ -90,6 +58,11 @@
 
     checkValid();
 
+    const btnResetSettings = document.getElementById("btnReset");
+    btnResetSettings.addEventListener("click", async (event) => {
+      const request = await fetch("/api/resetsettings");
+    });
+
     const btnSave = document.getElementById("btnSave");
     btnSave.addEventListener("click", async (event) => {
       const devicename = document.getElementById("devicename");
@@ -101,59 +74,8 @@
           devicename: devicename.value
         })
       });
-
-      const result = await saveRequest.json();
-      debugger;
     });
-
-
-    const button = document.getElementById("scanButton");
-    button.addEventListener("click", async (event) => {
-      const spinner = document.getElementById("load");
-      const scanButton = document.getElementById("scanButton");
-      const scanitemLi = document.getElementById("scanitem");
-
-      spinner.style.display = "inline";
-      scanButton.disabled = "disabled";
-      scanitemLi.className = "scanning";
-
-      const previousAccessPoints = Array.from(document.getElementsByClassName("ap-holder"));
-      previousAccessPoints.forEach(el => el.remove());
-
-      try {
-        const request = await fetch("/api/scanfornetworks");
-        const accessPointNames = await request.json();
-        // accessPointNames = ['dropitlikeaSquat', 'droptitlikeaSquat2'];
-
-        const scanitem = document.getElementById("scanitem");
-        accessPointNames.forEach(accessPointName => {
-          const holder = document.createElement("li");
-          holder.className = "ap-holder";
-          const btn = document.createElement("button");
-          btn.className = "access-point";
-          btn.innerText = accessPointName;
-          btn.addEventListener("click", fillAccessPointName);
-
-          holder.appendChild(btn);
-
-          scanitem.parentElement.insertBefore(holder, scanitem.nextElementSibling);
-        });
-      } finally {
-        scanButton.disabled = "";
-        spinner.style.display = "none";
-        scanitemLi.className = "";
-
-        // setTimeout(() => {
-        //   scanButton.disabled = "";
-        //   spinner.style.display = "none";
-        //   scanitemLi.className = "";
-        // }, 2000);
-      }
-    });
-
-    function fillAccessPointName(event) {
-      document.getElementById("ssid").value = event.target.innerText;
-    }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 </body>
 </html>
