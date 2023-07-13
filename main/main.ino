@@ -1,4 +1,3 @@
-
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <AsyncTCP.h>
@@ -82,7 +81,7 @@ String valueProcessor(const String& var)
   
   if(var == "DEVICE_NAME")
     return deviceName;
-  return String();
+  return var;
 }
 
 void configureUrlRoutes() {

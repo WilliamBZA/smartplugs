@@ -5,77 +5,91 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
   <style>
-    li {
-      list-style-type:none;
+    .switch input
+    {
+      display: none;
+    }
+
+    .switch 
+    {
+      display: inline-block;
+      width: 60px; /*=w*/
+      height: 30px; /*=h*/
+      margin: 4px;
+      transform: translateY(50%%);
+      position: relative;
+    }
+
+    .slider
+    {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      border-radius: 30px;
+      box-shadow: 0 0 0 2px #777, 0 0 4px #777;
+      cursor: pointer;
+      border: 4px solid transparent;
+      overflow: hidden;
+      transition: 0.2s;
+    }
+
+    .slider:before
+    {
+      position: absolute;
+      content: "";
+      width: 100%%;
+      height: 100%%;
+      background-color: #777;
+      border-radius: 30px;
+      transform: translateX(-30px); /*translateX(-(w-h))*/
+      transition: 0.2s;
+    }
+
+    input:checked + .slider:before
+    {
+      transform: translateX(30px); /*translateX(w-h)*/
+      background-color: limeGreen;
+    }
+
+    input:checked + .slider
+    {
+      box-shadow: 0 0 0 2px limeGreen, 0 0 8px limeGreen;
     }
   </style>
 </head>
 <body class="container">
+  <nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">Smart Plug</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="settings.html">Settings</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
   <div class="">
-    <h1>Device setup</h1>
+    <h1>%DEVICE_NAME%</h1>
+
     <div>
-      <div class="mb-3">
-        <label for="devicename" class="form-label">Device Name:</label>
-        <input type="text" id="devicename" name="devicename" placeholder="Device name" value="%DEVICE_NAME%" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
-        <div id="deviceNameHelp" class="form-text">The name of this plug</div>
-      </div>
-      <div><button id="btnSave" type="submit" disabled="disabled" class="btn btn-primary">Save settings</button></div>
-      <br/>
-      <div><button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#confirmResetSettingsModal">Reset wifi settings</button></div>
+      <label>
+        On?
+        <div class="switch">
+          <input type="checkbox">
+          <span class="slider"></span>
+        </div>
+      </label>
     </div>
   </div>
 
-  <!-- Confirm reset settings Modal -->
-  <div class="modal fade" id="confirmResetSettingsModal" tabindex="-1" aria-labelledby="resetSettingsModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h1 class="modal-title fs-5" id="resetSettingsModalLabel">Reset settings?</h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          Are you sure you want to reset the device settings? You will need to reconfigure the device again.
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-          <button type="button" id="btnReset" class="btn btn-primary" data-bs-dismiss="modal">Yes</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    function checkValid() {
-      const devicename = document.getElementById("devicename");
-
-      if (devicename.value) {
-        devicename.value = devicename.value.replace(' ', '').substring(0, 32);
-      }
-
-      const btnSave = document.getElementById("btnSave");
-      btnSave.disabled = !(devicename.value);
-    }
-
-    checkValid();
-
-    const btnResetSettings = document.getElementById("btnReset");
-    btnResetSettings.addEventListener("click", async (event) => {
-      const request = await fetch("/api/resetsettings");
-    });
-
-    const btnSave = document.getElementById("btnSave");
-    btnSave.addEventListener("click", async (event) => {
-      const devicename = document.getElementById("devicename");
-
-      const saveRequest = await fetch("/api/savesettings", {
-        method: "POST",
-        contentType: "application/json",
-        body: JSON.stringify({
-          devicename: devicename.value
-        })
-      });
-    });
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 </body>
 </html>
