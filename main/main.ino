@@ -9,8 +9,6 @@
 #include <AsyncJson.h>
 
 WiFiManager wifiManager;
-WiFiManagerParameter device_name_parameter("devicename", "Device Name", "", 40);
-
 AsyncWebServer server(80);
 
 String deviceName = "UnknownDevice";
@@ -24,26 +22,6 @@ bool relay2State = false;
 String relay2Name = "Switch 2";
 
 void connectToWifi() {
-  wifiManager.addParameter(&device_name_parameter);
-  wifiManager.setSaveParamsCallback([]() {
-    Serial.print("Device name: ");
-    Serial.println(deviceName);
-    deviceName = device_name_parameter.getValue();
-  
-    Serial.print("Device name: ");
-    Serial.println(deviceName);
-
-    File settingsFile = SPIFFS.open("/settings.json", "w");
-    StaticJsonDocument<256> settingsDoc;
-    settingsDoc["devicename"] = deviceName;
-
-    if (serializeJson(settingsDoc, settingsFile) == 0) {
-      Serial.println("Failed to write to file");
-    }
-
-    settingsFile.close();
-  });
-
   wifiManager.autoConnect("smartplugs");
 }
 
