@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
   <style>
-    li {
-      list-style-type:none;
+    #secondRelaySettings {
+      display: none;
     }
   </style>
 </head>
@@ -30,14 +30,37 @@
   <div class="">
     <h1>Device setup</h1>
     <div>
-      <div class="mb-3">
-        <label for="devicename" class="form-label">Device Name:</label>
-        <input type="text" id="devicename" name="devicename" placeholder="Device name" value="%DEVICE_NAME%" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
-        <div id="deviceNameHelp" class="form-text">The name of this plug</div>
+      <div class="row g-3">
+        <div class="mb-3">
+          <label for="devicename" class="form-label">Device Name:</label>
+          <input type="text" id="devicename" name="devicename" placeholder="Device name" value="%DEVICE_NAME%" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" maxlength="32" />
+        </div>
+        
+        <div class="col-auto">
+          <label for="firstRelayName" class="form-label">First relay name:</label>
+          <input type="text" id="firstRelayName" name="firstRelayName" placeholder="Name" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+        </div>
+        <div class="col-auto">
+          <label for="firstRelayPort" class="form-label">First relay pin number:</label>
+          <input type="number" id="firstRelayPort" name="firstRelayPort" placeholder="Relay PIN" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+        </div>
+        <div class="mb-3">
+          <label><input type="checkbox" id="hasSecondRelay" /> Has second relay?</label>
+          <span id="secondRelaySettings" class="row g-3">
+            <div class="col-auto">
+              <label for="secondRelayName" class="form-label">Second relay name:</label>
+              <input type="text" id="secondRelayName" name="secondRelayName" placeholder="Name" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+            </div>
+            <div class="col-auto">
+              <label for="secondRelayPort" class="form-label">Second relay pin number:</label>
+              <input type="number" id="secondRelayPort" name="secondRelayPort" placeholder="Relay PIN" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+            </div>
+          </span>
+        </div>
+        <div><button id="btnSave" type="submit" disabled="disabled" class="btn btn-primary">Save settings</button></div>
+        <br/>
+        <div><button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#confirmResetSettingsModal">Reset wifi settings</button></div>
       </div>
-      <div><button id="btnSave" type="submit" disabled="disabled" class="btn btn-primary">Save settings</button></div>
-      <br/>
-      <div><button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#confirmResetSettingsModal">Reset wifi settings</button></div>
     </div>
   </div>
 
@@ -61,18 +84,30 @@
   </div>
 
   <script>
-    function checkValid() {
-      const devicename = document.getElementById("devicename");
+    let currentSettings = %START_SETTINGS%;
 
-      if (devicename.value) {
-        devicename.value = devicename.value.replace(' ', '').substring(0, 32);
-      }
+    const devicename = document.getElementById("devicename");
+    const firstRelayPort = document.getElementById("firstRelayPort");
+    const firstRelayName = document.getElementById("firstRelayName");
 
-      const btnSave = document.getElementById("btnSave");
-      btnSave.disabled = !(devicename.value);
-    }
+    const hasSecondRelay = document.getElementById("hasSecondRelay");
+    const secondRelayPort = document.getElementById("secondRelayPort");
+    const secondRelayName = document.getElementById("secondRelayName");
 
+    devicename.value = currentSettings.devicename;
+    firstRelayName.value = currentSettings.relay1Name;
+    firstRelayPort.value = currentSettings.relay1Pin;
+
+    hasSecondRelay.checked = parseInt(currentSettings.hasSecondRelay);
+    secondRelayName.value = currentSettings.relay2Name;
+    secondRelayPort.value = currentSettings.relay2Pin;
+
+    toggleVisibileStateOfSecondRelay();
     checkValid();
+
+    hasSecondRelay.addEventListener('change', (event) => {
+      toggleVisibileStateOfSecondRelay();
+    });
 
     const btnResetSettings = document.getElementById("btnReset");
     btnResetSettings.addEventListener("click", async (event) => {
@@ -81,16 +116,33 @@
 
     const btnSave = document.getElementById("btnSave");
     btnSave.addEventListener("click", async (event) => {
-      const devicename = document.getElementById("devicename");
+      await saveSettings();
+    });
 
+    async function saveSettings() {
       const saveRequest = await fetch("/api/savesettings", {
         method: "POST",
         contentType: "application/json",
         body: JSON.stringify({
-          devicename: devicename.value
+          devicename: devicename.value,
+          relay1pin: parseInt(firstRelayPort.value),
+          relay1name: firstRelayName.value,
+          relay2enabled: hasSecondRelay.checked,
+          relay2pin: parseInt(secondRelayPort.value),
+          relay2name: secondRelayName.value
         })
       });
-    });
+    }
+
+    function toggleVisibileStateOfSecondRelay() {
+      const secondRelaySettings = document.getElementById("secondRelaySettings");
+      secondRelaySettings.style.display = hasSecondRelay.checked ? "flex" : "none";
+    }
+
+    function checkValid() {
+      const btnSave = document.getElementById("btnSave");
+      btnSave.disabled = !(devicename.value);
+    }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 </body>
