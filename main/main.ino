@@ -7,6 +7,7 @@
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
+#include <ESPmDNS.h>
 
 WiFiManager wifiManager;
 AsyncWebServer server(80);
@@ -145,16 +146,16 @@ void toggleRelay(AsyncWebServerRequest *request, uint8_t *data) {
   deserializeJson(doc, data);
 
   int relayNum = doc["relay"];
-  int shouldBeOn = !doc["state"];
+  int shouldBeOn = doc["state"];
 
   if (relayNum == 1) {
     Serial.print("Toggling PIN: "); Serial.print(relay1Pin); Serial.print(" to state: "); Serial.println(shouldBeOn);
     digitalWrite(relay1Pin, shouldBeOn);
-    relay1State = !shouldBeOn;
+    relay1State = shouldBeOn;
   } else if (relayNum == 2) {
     Serial.print("Toggling PIN: "); Serial.print(relay2Pin); Serial.print(" to state: "); Serial.println(shouldBeOn);
     digitalWrite(relay2Pin, shouldBeOn);
-    relay2State = !shouldBeOn;
+    relay2State = shouldBeOn;
   }
 }
 
@@ -177,6 +178,14 @@ void saveSettings(AsyncWebServerRequest *request, uint8_t *data) {
   bool relay2enabled = doc["relay2enabled"]; // true
   int relay2pin = doc["relay2pin"]; // 13
   const char* relay2name = doc["relay2name"]; // "asdasd"
+
+  if (!isPinSafe(relay1pin)) {
+    relay1pin = 13; // default 
+  }
+
+  if (!isPinSafe(relay2pin)) {
+    relay2pin = 14;
+  }
 
   deviceName = devicename;
   relay1Pin = relay1pin;
@@ -245,6 +254,14 @@ void loadDeviceSettings() {
   int relay2pin = doc["relay2pin"]; // 18
   const char* relay2name = doc["relay2Name"]; // "12345678901234567890123456789012"
 
+  if (!isPinSafe(relay1pin)) {
+    relay1pin = 13; // default 
+  }
+
+  if (!isPinSafe(relay2pin)) {
+    relay2pin = 14;
+  }
+
   deviceName = devicename;
   relay1Pin = relay1pin;
   relay1Name = relay1name;
@@ -266,6 +283,29 @@ void loadDeviceSettings() {
   settingsFile.close();
 }
 
+bool isPinSafe(int pinNo) {
+  switch(pinNo) {
+    case 4:
+    case 13:
+    case 14:
+    case 16:
+    case 17:
+    case 18:
+    case 19:
+    case 21:
+    case 22:
+    case 23:
+    case 25:
+    case 26:
+    case 27:
+    case 32:
+    case 33:
+      return true;
+  }
+
+  return false;
+}
+
 void setup() {
   Serial.begin(115200);
   SPIFFS.begin();
@@ -275,15 +315,21 @@ void setup() {
   configureUrlRoutes();
   configureOTA();
 
+  String dnsName = deviceName;
+  dnsName.replace(" ", "");
+  if(!MDNS.begin(dnsName)) {
+     Serial.println("Error starting mDNS");
+  }
+
   Serial.print("relay1Pin name: "); Serial.println(relay1Pin);
   Serial.print("relay2Pin name: "); Serial.println(relay2Pin);
 
   pinMode(relay1Pin, OUTPUT);
-  digitalWrite(relay1Pin, HIGH);
+  digitalWrite(relay1Pin, LOW);
 
   if (relay2Enabled) {
     pinMode(relay2Pin, OUTPUT);
-    digitalWrite(relay2Pin, HIGH);
+    digitalWrite(relay2Pin, LOW);
   }
   
   server.begin();

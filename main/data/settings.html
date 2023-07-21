@@ -8,6 +8,16 @@
     #secondRelaySettings {
       display: none;
     }
+
+    .validation-error {
+      color:red;
+      font-style: italic;
+      font-size: 0.8em;
+    }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body class="container">
@@ -38,24 +48,36 @@
         
         <div class="col-auto">
           <label for="firstRelayName" class="form-label">First relay name:</label>
-          <input type="text" id="firstRelayName" name="firstRelayName" placeholder="Name" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+          <input type="text" id="firstRelayName" name="firstRelayName" placeholder="Name" value="" autocomplete="off"  class="form-control" required />
         </div>
         <div class="col-auto">
           <label for="firstRelayPort" class="form-label">First relay pin number:</label>
-          <input type="number" id="firstRelayPort" name="firstRelayPort" placeholder="Relay PIN" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+          <input type="number" id="firstRelayPort" name="firstRelayPort" placeholder="Relay PIN" value="" autocomplete="off"  class="form-control" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" required />
+        </div>
+        <div class="validation-error hidden" id="firstRelayPortValidation">
+          Valid pins are: <pre>4, 13, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33</pre>
+        </div>
+        <div class="validation-error hidden duplicatepins">
+          Must have unique pins for each relay
         </div>
         <div class="mb-3">
           <label><input type="checkbox" id="hasSecondRelay" /> Has second relay?</label>
           <span id="secondRelaySettings" class="row g-3">
             <div class="col-auto">
               <label for="secondRelayName" class="form-label">Second relay name:</label>
-              <input type="text" id="secondRelayName" name="secondRelayName" placeholder="Name" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+              <input type="text" id="secondRelayName" name="secondRelayName" placeholder="Name" value="" autocomplete="off"  class="form-control" />
             </div>
             <div class="col-auto">
               <label for="secondRelayPort" class="form-label">Second relay pin number:</label>
-              <input type="number" id="secondRelayPort" name="secondRelayPort" placeholder="Relay PIN" value="" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" />
+              <input type="number" id="secondRelayPort" name="secondRelayPort" placeholder="Relay PIN" value="" autocomplete="off" class="form-control" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" />
             </div>
           </span>
+        </div>
+        <div class="validation-error hidden" id="secondRelayPortValidation">
+          Valid pins are: <pre>4, 13, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33</pre>
+        </div>
+        <div class="validation-error hidden duplicatepins">
+          Must have unique pins for each relay
         </div>
         <div><button id="btnSave" type="submit" disabled="disabled" class="btn btn-primary">Save settings</button></div>
         <br/>
@@ -89,10 +111,12 @@
     const devicename = document.getElementById("devicename");
     const firstRelayPort = document.getElementById("firstRelayPort");
     const firstRelayName = document.getElementById("firstRelayName");
+    const firstRelayPortValidation = document.getElementById("firstRelayPortValidation");
 
     const hasSecondRelay = document.getElementById("hasSecondRelay");
     const secondRelayPort = document.getElementById("secondRelayPort");
     const secondRelayName = document.getElementById("secondRelayName");
+    const secondRelayPortValidation = document.getElementById("secondRelayPortValidation");
 
     devicename.value = currentSettings.devicename;
     firstRelayName.value = currentSettings.relay1Name;
@@ -140,8 +164,38 @@
     }
 
     function checkValid() {
+      const safePins = [4, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
+
       const btnSave = document.getElementById("btnSave");
-      btnSave.disabled = !(devicename.value);
+      let invalid = !(devicename.value);
+
+      if (safePins.indexOf(parseInt(firstRelayPort.value)) < 0) {
+        firstRelayPortValidation.classList.remove("hidden");
+        invalid = true;
+      } else {
+        firstRelayPortValidation.classList.add("hidden");
+      }
+
+      if (hasSecondRelay.checked) {
+        if (safePins.indexOf(parseInt(secondRelayPort.value)) < 0) {
+          secondRelayPortValidation.classList.remove("hidden");
+          invalid = true;
+        } else {
+          secondRelayPortValidation.classList.add("hidden");
+        }
+
+        if (secondRelayPort.value == firstRelayPort.value) {
+          const duplicatePinValidations = document.getElementsByClassName("duplicatepins");
+          Array.from(duplicatePinValidations).forEach(elem => elem.classList.remove("hidden"));
+
+          invalid = true;
+        } else {
+          const duplicatePinValidations = document.getElementsByClassName("duplicatepins");
+          Array.from(duplicatePinValidations).forEach(elem => elem.classList.add("hidden"));
+        }
+      }
+
+      btnSave.disabled = invalid;
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
