@@ -1,5 +1,5 @@
 #include <WiFi.h>
-#include <WiFiManager.h>
+// #include <WiFiManager.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoOTA.h>
@@ -8,22 +8,48 @@
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
 #include <ESPmDNS.h>
+#include "time.h"
+#include "Timer.h"
 
-WiFiManager wifiManager;
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 7200;
+
+// WiFiManager wifiManager;
 AsyncWebServer server(80);
 
 String deviceName = "UnknownDevice";
 int relay1Pin = 13;
 bool relay1State = false;
 String relay1Name = "Switch 1";
+int relay1OnTime = 660;
+int relay1OffTime = 960;
+bool relay1TimeOverride = false;
+bool relay1TimeState = false;
 
 bool relay2Enabled = false;
 int relay2Pin = 11;
 bool relay2State = false;
 String relay2Name = "Switch 2";
+int relay2OnTime = 0;
+int relay2OffTime = 0;
+
+Timer timeSwitchChecker(5000);
 
 void connectToWifi() {
-  wifiManager.autoConnect("smartplugs");
+  // wifiManager.autoConnect("smartplugs");
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin("", "");
+  Serial.println("\nConnecting to WiFi Network ..");
+ 
+  while(WiFi.status() != WL_CONNECTED){
+      Serial.print(".");
+      delay(100);
+  }
+ 
+  Serial.println("\nConnected to the WiFi network");
+  Serial.print("Local ESP32 IP: ");
+  Serial.println(WiFi.localIP());
 }
 
 void configureOTA() {
@@ -71,6 +97,11 @@ String getSettings() {
   settings += relay1State;
   settings += "\", \"relay1Pin\": \"";
   settings += relay1Pin;
+  settings += "\", \"relay1TimeOverride\": \"";
+  settings += relay1TimeOverride;
+  settings += "\", \"relay1TimeState\": \"";
+  settings += relay1TimeState;
+  
   settings += "\", \"hasSecondRelay\": \"";
   settings += relay2Enabled;
 
@@ -80,6 +111,9 @@ String getSettings() {
   settings += relay2State;
   settings += "\", \"relay2Pin\": \"";
   settings += relay2Pin;
+
+  settings += "\", \"deviceTime\": \"";
+  settings += getLocalTime(false);
 
   settings += "\"}";
   return settings;
@@ -104,7 +138,7 @@ void configureUrlRoutes() {
 
   server.on("/api/resetsettings", HTTP_GET, [](AsyncWebServerRequest *request) {
     Serial.print("Resetting settings..."); Serial.println("");
-    wifiManager.resetSettings();
+    // wifiManager.resetSettings();
 
     request->send(200, "text/json", "OK");
     delay(500);
@@ -152,6 +186,8 @@ void toggleRelay(AsyncWebServerRequest *request, uint8_t *data) {
     Serial.print("Toggling PIN: "); Serial.print(relay1Pin); Serial.print(" to state: "); Serial.println(shouldBeOn);
     digitalWrite(relay1Pin, shouldBeOn);
     relay1State = shouldBeOn;
+    
+    relay1TimeOverride = (relay1State != relay1TimeState);
   } else if (relayNum == 2) {
     Serial.print("Toggling PIN: "); Serial.print(relay2Pin); Serial.print(" to state: "); Serial.println(shouldBeOn);
     digitalWrite(relay2Pin, shouldBeOn);
@@ -306,6 +342,47 @@ bool isPinSafe(int pinNo) {
   return false;
 }
 
+String getLocalTime(bool switchIfTrigger) {
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return "00:00";
+  }
+
+  if (switchIfTrigger) {
+    int currentTime = timeinfo.tm_hour * 60 + timeinfo.tm_min;
+    if (currentTime >= relay1OnTime && currentTime < relay1OffTime) {
+      relay1TimeState = true;
+
+      if (!relay1TimeOverride) {
+        relay1State = true;
+        relay1TimeOverride = (relay1State != relay1TimeState);
+        Serial.println("Switching relay on");
+        digitalWrite(relay1Pin, HIGH);
+      } else {
+        Serial.println("Not switching relay on as time switch is overridden");
+      }
+    } else {
+      relay1TimeState = false;
+
+      if (!relay1TimeOverride) {
+        relay1State = false;
+        relay1TimeOverride = (relay1State != relay1TimeState);
+        Serial.println("Switching relay off");
+        digitalWrite(relay1Pin, LOW);
+      } else {
+        Serial.println("Not switching relay off as time switch is overridden");
+      }
+    }
+  }
+
+  char timeHour[6];
+  strftime(timeHour, 6, "%R", &timeinfo);
+  Serial.print("Hour: ");
+  Serial.println(timeHour);
+  return timeHour;
+}
+
 void setup() {
   Serial.begin(115200);
   SPIFFS.begin();
@@ -321,6 +398,8 @@ void setup() {
      Serial.println("Error starting mDNS");
   }
 
+  configTime(gmtOffset_sec, 0, ntpServer);
+
   Serial.print("relay1Pin name: "); Serial.println(relay1Pin);
   Serial.print("relay2Pin name: "); Serial.println(relay2Pin);
 
@@ -333,8 +412,14 @@ void setup() {
   }
   
   server.begin();
+
+  timeSwitchChecker.Start();
 }
 
 void loop() {
   ArduinoOTA.handle();
+
+  if (timeSwitchChecker.Check()) {
+    getLocalTime(true);
+  }
 }
